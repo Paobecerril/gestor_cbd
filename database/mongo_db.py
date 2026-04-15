@@ -58,6 +58,6 @@ def reemplazar(nombre, filtro, nuevo_documento):
 
 
 def eliminar_logico(nombre, filtro):
-    """Soft-delete: marca el documento como inactivo."""
+    """Soft-delete: marca TODOS los documentos que coincidan como inactivos."""
     col = get_collection(nombre)
-    col.update_one(filtro, {"$set": {"activo": False}})
+    col.update_many(filtro, {"$set": {"activo": False}})  # 👈 update_many
