@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from database.mongo_db import obtener_todos
 from models.gastos import obtener_gastos
-from models.ordenes import actualizar_orden
+from models.ordenes import actualizar_orden, desactivar_orden
 from services.finanzas_service import calcular_finanzas
 
 
