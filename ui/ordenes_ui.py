@@ -77,6 +77,10 @@ def ordenes_ui():
 
     st.title("🧾 Órdenes")
 
+    # 👇 CAMBIO: inicializar set de ids borrados
+    if "ids_borrados" not in st.session_state:
+        st.session_state.ids_borrados = set()
+
     clientes  = obtener_clientes()
     productos = obtener_productos_activos()
 
@@ -95,7 +99,9 @@ def ordenes_ui():
 
         borradores = [
             o for o in ordenes
-            if o.get("estado_general") == "borrador" and o.get("activo", True)
+            if o.get("estado_general") == "borrador"
+            and o.get("activo", True)
+            and o["id"] not in st.session_state.ids_borrados  # 👈 CAMBIO: filtro local
         ]
 
         st.markdown("### 🗂️ Órdenes pendientes")
@@ -123,6 +129,7 @@ def ordenes_ui():
 
                     with col3:
                         if st.button("🗑️", key=f"delete_{o['id']}"):
+                            st.session_state.ids_borrados.add(o["id"])  # 👈 CAMBIO: oculta inmediatamente
                             desactivar_orden(o["id"])
                             st.rerun()
 
