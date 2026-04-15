@@ -48,13 +48,9 @@ def actualizar(nombre, filtro, nuevos_datos):
 
 
 def reemplazar(nombre, filtro, nuevo_documento):
-    """
-    Reemplaza un documento completo.
-    Útil para guardar órdenes con listas anidadas (productos).
-    """
     nuevo_documento.pop("_id", None)
     col = get_collection(nombre)
-    col.replace_one(filtro, nuevo_documento, upsert=True)
+    col.replace_one(filtro, nuevo_documento)  # 👈 sin upsert=True
 
 
 def eliminar_logico(nombre, filtro):
