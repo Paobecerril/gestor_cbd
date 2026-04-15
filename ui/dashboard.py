@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from database.mongo_db import obtener_todos
 from models.gastos import obtener_gastos
+from models.ordenes import actualizar_orden
 from services.finanzas_service import calcular_finanzas
 
 
@@ -11,7 +12,6 @@ from services.finanzas_service import calcular_finanzas
 # HELPERS
 # =========================
 def safe_fecha(f):
-    """Convierte string de fecha a datetime, o devuelve None si falla."""
     try:
         return datetime.strptime(f, "%Y-%m-%d")
     except Exception:
@@ -19,33 +19,23 @@ def safe_fecha(f):
 
 
 def filtrar_por_periodo(registros, periodo, campo_fecha="fecha"):
-    """
-    Filtra una lista de dicts por periodo.
-    periodo: "todo", "este_mes", "esta_semana", "hoy"
-    """
     hoy = datetime.now().date()
-
     if periodo == "todo":
         return registros
-
     resultado = []
     for r in registros:
         fecha = safe_fecha(r.get(campo_fecha, ""))
         if fecha is None:
             continue
         f = fecha.date()
-
         if periodo == "hoy" and f == hoy:
             resultado.append(r)
-
         elif periodo == "esta_semana":
             inicio_semana = hoy - timedelta(days=hoy.weekday())
             if inicio_semana <= f <= hoy:
                 resultado.append(r)
-
         elif periodo == "este_mes" and f.month == hoy.month and f.year == hoy.year:
             resultado.append(r)
-
     return resultado
 
 
@@ -71,20 +61,27 @@ def mostrar_dashboard():
     )
 
     # =========================
-    # CARGAR DATOS DESDE MONGODB
+    # CARGAR DATOS
     # =========================
     todas_las_ordenes = obtener_todos("ordenes") or []
     todos_los_gastos  = obtener_gastos() or []
 
-    # Las "ventas" son órdenes confirmadas
     todas_las_ventas = [
         o for o in todas_las_ordenes
         if o.get("estado_general") == "confirmada"
+        and o.get("activo", True)  # 👈 también filtra activo aquí
     ]
 
     ventas  = filtrar_por_periodo(todas_las_ventas, periodo)
     gastos  = filtrar_por_periodo(todos_los_gastos, periodo)
-    ordenes = [o for o in todas_las_ordenes if o.get("activo", True)]
+
+    # 👇 CAMBIO: solo órdenes activas, confirmadas y no entregadas
+    ordenes = [
+        o for o in todas_las_ordenes
+        if o.get("activo", True)
+        and o.get("estado_general") == "confirmada"
+        and o.get("estado_entrega") != "entregado"
+    ]
 
     # =========================
     # MÉTRICAS PRINCIPALES
@@ -112,18 +109,25 @@ def mostrar_dashboard():
     pendientes = [
         o for o in ordenes
         if o.get("estado_pago") == "pendiente"
-        and o.get("estado_general") == "confirmada"
     ]
 
     if not pendientes:
         st.success("✅ No hay cobros pendientes. ¡Todo al día!")
     else:
         st.warning(f"Tienes **{len(pendientes)}** orden(es) sin cobrar:")
+
         for o in pendientes:
-            col1, col2, col3 = st.columns([3, 2, 2])
-            col1.write(f"👤 **{o.get('cliente', 'Sin nombre')}**")
-            col2.write(f"💵 ${o.get('total', 0):,.2f}")
-            col3.write(f"📦 Orden #{o.get('id', '—')}")
+            with st.container(border=True):
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+                col1.write(f"👤 **{o.get('cliente', 'Sin nombre')}**")
+                col2.write(f"💵 ${o.get('total', 0):,.2f}")
+                col3.write(f"📦 Orden #{o.get('id', '—')}")
+
+                # 👇 CAMBIO: botón para marcar como pagado directo desde el dashboard
+                if col4.button("💳 Cobrar", key=f"cobrar_dash_{o['id']}"):
+                    o["estado_pago"] = "pagado"
+                    actualizar_orden(o)
+                    st.rerun()
 
     st.divider()
 
@@ -151,8 +155,7 @@ def mostrar_dashboard():
 
     en_proceso = [
         o for o in ordenes
-        if o.get("estado_general") == "confirmada"
-        and o.get("estado_entrega") != "entregado"
+        if o.get("estado_entrega") != "entregado"
     ]
 
     if not en_proceso:
