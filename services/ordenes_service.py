@@ -7,7 +7,7 @@ def recalcular_totales(orden):
         subtotal += p["cantidad"] * p["precio"]
         costo_total += p["cantidad"] * p["costo"]
 
-    total = subtotal - orden["descuento"] + orden["gasto_extra"]
+    total = subtotal - orden.get("descuento_global", 0) + orden.get("gasto_extra", 0)
     ganancia = total - costo_total
 
     orden["subtotal"] = subtotal

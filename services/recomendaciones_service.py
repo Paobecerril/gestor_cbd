@@ -1,9 +1,12 @@
-from models.ventas import obtener_ventas
+from models.ordenes import obtener_ordenes
 
 
 def sugerir_precio(cliente, producto):
 
-    ventas = obtener_ventas()
+    ventas = [
+        o for o in obtener_ordenes()
+        if o.get("estado_general") == "confirmada" and o.get("activo", True)
+    ]
 
     precios = []
 
