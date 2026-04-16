@@ -9,8 +9,11 @@ def _next_id():
     return max((o["id"] for o in ordenes), default=0) + 1
 
 
-def obtener_ordenes():
-    return obtener_todos(COLECCION)
+def obtener_ordenes(activos_only=True):
+    ordenes = obtener_todos(COLECCION)
+    if activos_only:
+        return [o for o in ordenes if o.get("activo", True)]
+    return ordenes
 
 
 def crear_orden(cliente):

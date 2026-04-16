@@ -154,102 +154,101 @@ def ordenes_ui():
             if st.button("🆕 Iniciar orden"):
                 st.session_state.orden_actual = crear_orden(cliente["nombre"])
                 st.rerun()
-            st.stop()
 
-        # Si cambió el cliente, avisar y ofrecer reiniciar
-        if st.session_state.orden_actual["cliente"] != cliente["nombre"]:
+        elif st.session_state.orden_actual["cliente"] != cliente["nombre"]:
+            # Si cambió el cliente, avisar y ofrecer reiniciar
             st.warning("⚠️ El cliente seleccionado cambió. ¿Deseas cancelar la orden actual e iniciar una nueva?")
             if st.button("🔄 Nueva orden para este cliente"):
                 desactivar_orden(st.session_state.orden_actual["id"])
                 st.session_state.orden_actual = crear_orden(cliente["nombre"])
                 st.rerun()
-            st.stop()
 
-        orden = st.session_state.orden_actual
+        else:
+            orden = st.session_state.orden_actual
 
-        st.caption(f"Orden #{orden['id']}")
+            st.caption(f"Orden #{orden['id']}")
 
-        # =========================
-        # AGREGAR PRODUCTO
-        # =========================
-        with st.container(border=True):
+            # =========================
+            # AGREGAR PRODUCTO
+            # =========================
+            with st.container(border=True):
 
-            st.markdown("#### ➕ Agregar producto")
+                st.markdown("#### ➕ Agregar producto")
 
-            col1, col2, col3 = st.columns(3)
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    producto = st.selectbox(
+                        "Producto",
+                        productos,
+                        format_func=lambda x: x["nombre"]
+                    )
+
+                with col2:
+                    cantidad = st.number_input("Cantidad", 1, 100, 1)
+
+                with col3:
+                    precio = st.number_input(
+                        "Precio",
+                        0.0,
+                        10000.0,
+                        float(producto["precio_sugerido"])
+                    )
+
+                if st.button("➕ Agregar"):
+                    orden["productos"].append({
+                        "producto": producto["nombre"],
+                        "cantidad": cantidad,
+                        "precio":   precio,
+                        "costo":    producto["costo_base"]
+                    })
+                    orden = recalcular(orden)
+                    actualizar_orden(orden)
+                    st.rerun()
+
+            # =========================
+            # LISTA PRODUCTOS
+            # =========================
+            if orden["productos"]:
+
+                st.markdown("### 🛒 Productos")
+
+                for i, p in enumerate(orden["productos"]):
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.write(f"{p['producto']} — {p['cantidad']} x ${p['precio']}")
+                    with col2:
+                        if st.button("❌", key=f"del_{i}"):
+                            orden["productos"].pop(i)
+                            orden = recalcular(orden)
+                            actualizar_orden(orden)
+                            st.rerun()
+
+            # =========================
+            # TOTALES
+            # =========================
+            orden = recalcular(orden)
+            actualizar_orden(orden)
+
+            if orden["productos"]:
+                st.markdown("### 🧾 Vista previa")
+                with st.container(border=True):
+                    mostrar_ticket(orden)
+
+            st.divider()
+
+            col1, col2 = st.columns(2)
 
             with col1:
-                producto = st.selectbox(
-                    "Producto",
-                    productos,
-                    format_func=lambda x: x["nombre"]
-                )
+                if st.button("✅ Confirmar orden"):
+                    orden["estado_general"] = "confirmada"
+                    actualizar_orden(orden)
+                    st.session_state.orden_actual = None
+                    st.success("Orden confirmada")
+                    st.rerun()
 
             with col2:
-                cantidad = st.number_input("Cantidad", 1, 100, 1)
-
-            with col3:
-                precio = st.number_input(
-                    "Precio",
-                    0.0,
-                    10000.0,
-                    float(producto["precio_sugerido"])
-                )
-
-            if st.button("➕ Agregar"):
-                orden["productos"].append({
-                    "producto": producto["nombre"],
-                    "cantidad": cantidad,
-                    "precio":   precio,
-                    "costo":    producto["costo_base"]
-                })
-                orden = recalcular(orden)
-                actualizar_orden(orden)
-                st.rerun()
-
-        # =========================
-        # LISTA PRODUCTOS
-        # =========================
-        if orden["productos"]:
-
-            st.markdown("### 🛒 Productos")
-
-            for i, p in enumerate(orden["productos"]):
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.write(f"{p['producto']} — {p['cantidad']} x ${p['precio']}")
-                with col2:
-                    if st.button("❌", key=f"del_{i}"):
-                        orden["productos"].pop(i)
-                        orden = recalcular(orden)
-                        actualizar_orden(orden)
-                        st.rerun()
-
-        # =========================
-        # TOTALES
-        # =========================
-        orden = recalcular(orden)
-        actualizar_orden(orden)
-
-        if orden["productos"]:
-            st.markdown("### 🧾 Vista previa")
-            with st.container(border=True):
-                mostrar_ticket(orden)
-
-        st.divider()
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            if st.button("✅ Confirmar orden"):
-                orden["estado_general"] = "confirmada"
-                actualizar_orden(orden)
-                st.session_state.orden_actual = None
-                st.success("Orden confirmada")
-                st.rerun()
-
-        with col2:
-            if st.button("🗑️ Cancelar"):
-                desactivar_orden(orden["id"])
-                st.session_state.orden_actual = None
-                st.rerun()
+                if st.button("🗑️ Cancelar"):
+                    desactivar_orden(orden["id"])
+                    st.session_state.orden_actual = None
+                    st.rerun()
