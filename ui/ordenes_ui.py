@@ -149,11 +149,21 @@ def ordenes_ui():
             format_func=lambda x: x["nombre"]
         )
 
-        if (
-            st.session_state.orden_actual is None or
-            st.session_state.orden_actual["cliente"] != cliente["nombre"]
-        ):
-            st.session_state.orden_actual = crear_orden(cliente["nombre"])
+        # Solo crear la orden cuando el usuario lo pide explícitamente
+        if st.session_state.orden_actual is None:
+            if st.button("🆕 Iniciar orden"):
+                st.session_state.orden_actual = crear_orden(cliente["nombre"])
+                st.rerun()
+            st.stop()
+
+        # Si cambió el cliente, avisar y ofrecer reiniciar
+        if st.session_state.orden_actual["cliente"] != cliente["nombre"]:
+            st.warning("⚠️ El cliente seleccionado cambió. ¿Deseas cancelar la orden actual e iniciar una nueva?")
+            if st.button("🔄 Nueva orden para este cliente"):
+                desactivar_orden(st.session_state.orden_actual["id"])
+                st.session_state.orden_actual = crear_orden(cliente["nombre"])
+                st.rerun()
+            st.stop()
 
         orden = st.session_state.orden_actual
 
